@@ -186,7 +186,7 @@ void display(void)
   if (isReadOnly) i = '%';
   else if (edited) i = '*';
   else i = '-';
-  printw("-%c%c  %s       --0x%llX", i, i, baseName, (long long) base + cursor);
+  printw("-%c-%c%c  %s     --0x%llX", current_mode == 0 ? 'N' : 'I', i, i, baseName, (long long) base + cursor);
   fsize = getfilesize();
   if (MAX(fileSize, lastEditedLoc)) printw("/0x%llX", fsize);
   printw("--%i%%", fsize == 0 ? 0 : 100 * (base + cursor + fsize/200) / fsize );

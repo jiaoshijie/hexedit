@@ -26,114 +26,74 @@ Explicitly set the number of bytes to display per line to <n>.
 .TP
 .I "\-h, \-\-help"
 Show the usage.
-.SH COMMANDS (quickly)
-.SS Moving
 .nf
-<, > :  go to start/end of the file
-Right:  next character
-Left:   previous character
-Down:   next line
-Up:     previous line
-Home:   beginning of line
-End:    end of line
-PUp:    page forward
-PDown:  page backward
-.fi
-.SS Miscellaneous
-.nf
-F2:     save
-F3:     load file
-F1:     help
-Ctrl-L: redraw
-Ctrl-Z: suspend
-Ctrl-X: save and exit
-Ctrl-C: exit without saving
 
-Tab:    toggle hex/ascii
-Return: go to
-Backspace: undo previous character
-Ctrl-U: undo all
-Ctrl-S: search forward
-Ctrl-R: search backward
 .fi
-.SS Cut&Paste
+.SS In insert mode
 .nf
-Ctrl-Space: set mark
-Esc-W:  copy
-Ctrl-Y: paste
-Esc-Y:  paste into a file
-Esc-I:  fill
+
+ESC or Ctrl-c or Ctrl-j or Ctrl-[ : return to normal mode
+Ctrl-h or BACKSAPCE               : delete backward char
+Ctrl-w                            : delete backward chars
+[0-f]                             : insert or replace a char under current cursor
+
 .fi
-.SH COMMANDS (full and detailed)
-o \fIRight-Arrow\fR, \fILeft-Arrow\fR, \fIDown-Arrow\fR, \fIUp-Arrow\fR \- move the cursor.
-.br
-o \fICtrl+F\fR, \fICtrl+B\fR, \fICtrl+N\fR, \fICtrl+P\fR \- move the cursor.
-.br
-o \fICtrl+Right-Arrow\fR, \fICtrl+Left-Arrow\fR, \fICtrl+Down-Arrow\fR, \fICtrl+Up-Arrow\fR \- move n times the cursor.
-.br
-o \fIEsc+Right-Arrow\fR, \fIEsc+Left-Arrow\fR, \fIEsc+Down-Arrow\fR, \fIEsc+Up-Arrow\fR \- move n times the cursor.
-.br
-o \fIEsc+F\fR, \fIEsc+B\fR, \fIEsc+N\fR, \fIEsc+P\fR \- move n times the cursor.
-.br
-o \fIHome\fR, \fICtrl+A\fR \- go the beginning of the line.
-.br
-o \fIEnd\fR, \fICtrl+E\fR \- go to the end of the line.
-.br
-o \fIPage up\fR, \fIEsc+V\fR, \fIF5\fR \- go up in the file by one page.
-.br
-o \fIPage down\fR, \fICtrl+V\fR, \fIF6\fR \- go down in the file by one page.
-.br
-o \fI<\fR, \fIEsc+<\fR, \fIEsc+Home\fR \- go to the beginning of the file.
-.br
-o \fI>\fR, \fIEsc+>\fR, \fIEsc+End\fR \- go to the end of the file (for regular files that have a size).
-.br
-o \fICtrl+Z\fR \- suspend hexedit.
-.br
-o \fICtrl+U\fR, \fICtrl+_\fR, \fICtrl+/\fR \- undo all (forget the modifications).
-.br
-o \fICtrl+Q\fR \- read next input character and insert it (this is useful for
-inserting control characters and bound keys).
-.br
-o \fITab\fR, \fICtrl+T\fR \- toggle between ASCII and hexadecimal.
-.br
-o \fI/\fR, \fICtrl+S\fR \- search forward (in ASCII or in hexadecimal, use \fITAB\fR to change).
-.br
-o \fICtrl+R\fR \- search backward.
-.br
-o \fICtrl+G\fR, \fIF4\fR \- go to a position in the file.
-.br
-o \fIReturn\fR \- go to a sector in the file if \fI\-\-sector\fR is used, otherwise go
-to a position in the file.
-.br
-o \fIEsc+L\fR \- display the page starting at the current cursor position.
-.br
-o \fIF2\fR, \fICtrl+W\fR \- save the modifications.
-.br
-o \fIF1\fR, \fIEsc+H\fR \- help (show the man page).
-.br
-o \fICtrl+O\fR, \fIF3\fR \- open another file
-.br
-o \fICtrl+L\fR \- redisplay (refresh) the display (useful when your terminal screws up).
-.br
-o \fIBackspace\fR, \fICtrl+H\fR \- undo the modifications made on the previous byte.
-.br
-o \fIEsc+Ctrl+H\fR \- undo the modifications made on the previous bytes.
-.br
-o \fICtrl+Space\fR, \fIF9\fR \- set mark where cursor is.
-.br
-o \fIEsc+W\fR, \fIDelete\fR, \fIF7\fR \- copy selected region.
-.br
-o \fICtrl+Y\fR, \fIInsert\fR, \fIF8\fR \- paste (yank) previously copied region.
-.br
-o \fIEsc+Y\fR, \fIF11\fR \- save previously copied region to a file.
-.br
-o \fIEsc+I\fR, \fIF12\fR \- fill the selection with a string
-.br
-o \fIEsc+T\fR \- truncate the file at the current location
-.br
-o \fICtrl+C\fR \- unconditional quit (without saving).
-.br
-o \fIF10\fR, \fICtrl+X\fR \- quit.
+.SS In normal mode
+.nf
+
+i        : goto insert mode
+A        : insert chars in the end of the file
+gg, G    : go to start/end of the file
+l        : next character
+h        : previous character
+j        : next line
+k        : previous line
+b        : backward chars
+w        : forward chars
+0        : beginning of line
+$        : end of line
+Ctrl-d   : next lines
+Ctrl-u   : prev lines
+Ctrl-f   : page forward
+Ctrl-b   : page backward
+F1       : help
+Ctrl-L   : redraw
+Ctrl-Z   : suspend
+v        : enter visual mode and quit visual mode
+p        : paste
+zz       : center cursor
+ZQ       : quit without saving
+ZZ       : save and exit
+r        : replace the char under the cursor
+R        : replace a hex-char under the cursor
+Ctrl-w-w : toggle hex/ascii
+/, ?     : search forward and backward
+f        : goto char
+x        : delete edited hex-char
+dw       : delete edited hex-chars
+dG       : truncate file
+Return   : go to
+:        : enter command mode
+
+
+.fi
+.SS In visual mode
+.nf
+y       : copy
+p       : paste
+C or cc : fill
+
+.fi
+.SS In command mode
+.nf
+p or paste : paste into a file
+f or find  : find and open a file
+w or write : save
+q or quit  : quit and ask about saving
+q!         : quit without asking save
+wq         : save and quit
+
+.fi
 .PP
 For the \fIEsc\fR commands, it sometimes works to use \fIAlt\fR instead of
 \fIEsc\fR. Funny things here (especially for froggies :) egrave = Alt+H ,

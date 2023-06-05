@@ -20,10 +20,16 @@
 static void goto_char(void);
 static void goto_sector(void);
 static void save_buffer(void);
-static void escaped_command(void);
 static void help(void);
 static void short_help(void);
 
+static void insert_mode(int key);
+static void normal_mode(int key);
+static void command_mode(void);
+static int get_and_run_command(void);
+
+static void delete_char(void);
+static void delete_chars(void);
 
 /*******************************************************************************/
 /* interactive functions */
@@ -204,7 +210,7 @@ int setTo(int c)
   if (cursor > nbBytes) return FALSE;
   if (hexOrAscii) {
       if (!isxdigit(c)) return FALSE;
-      val = hexCharToInt(c);	  
+      val = hexCharToInt(c);
       val = cursorOffset ? setLowBits(buffer[cursor], val) : setHighBits(buffer[cursor], val);
   }
   else val = c;
@@ -291,7 +297,7 @@ static void save_buffer(void)
       }
     q = p->next;
     freePage(p);
-  } 
+  }
   edited = NULL;
   if (lastEditedLoc > fileSize) fileSize = lastEditedLoc;
   lastEditedLoc = 0;
@@ -329,18 +335,256 @@ static void short_help(void)
 
 
 
-/*******************************************************************************/
-/* key_to_function */
-/*******************************************************************************/
-int key_to_function(int key)
+static void insert_mode(int key)
 {
+  switch (key) {
+    case CTRL('C'):
+    case CTRL('j'):
+    case CTRL('['):  // also works with 'ESC'
+      current_mode = 0;
+      break;
+    case KEY_BACKSPACE:
+    case CTRL('H'):
+      delete_backward_char();
+      break;
+    case CTRL('W'):
+      delete_backward_chars();
+      break;
+    default:
+      if ((key >= 256 || !setTo(key))) firstTimeHelp();
+  }
+}
+
+static void normal_mode(int key) {
+  int ch;
+
+  switch (key) {
+    case CTRL('C'):
+      displayMessageAndWaitForKey("Use `:q` to quit hexedit!!!");
+      break;
+
+    case 'i':
+      current_mode = 1;
+      break;
+    case 'A':
+      end_of_buffer();
+      current_mode = 1;
+      break;
+
+    case 'h':
+      backward_char();
+      break;
+    case 'j':
+      next_line();
+      break;
+    case 'k':
+      previous_line();
+      break;
+    case 'l':
+      forward_char();
+      break;
+    case 'b':
+      backward_chars();
+      break;
+    case 'w':
+      forward_chars();
+      break;
+    case CTRL('D'):
+      next_lines();
+      break;
+    case CTRL('U'):
+      previous_lines();
+      break;
+    case '0':
+      beginning_of_line();
+      break;
+    case '$':
+      end_of_line();
+      break;
+    case CTRL('F'):
+      scroll_up();
+      break;
+    case CTRL('B'):
+      scroll_down();
+      break;
+
+    case 'g':
+      ch = getch();
+      switch (ch) {
+        case 'g':
+          beginning_of_buffer();
+          break;
+        default:
+          firstTimeHelp();
+      }
+      break;
+    case 'G':
+      end_of_buffer();
+      break;
+
+    case 'Z':
+      ch = getch();
+      switch (ch) {
+        case 'Q':
+          quit();
+          break;
+        case 'Z':
+          ask_about_save_and_quit();
+          break;
+        default:
+          // TODO: maybe change infomation
+          firstTimeHelp();
+      }
+      break;
+
+    case CTRL('Z'):
+      suspend();
+      break;
+    case 'u':
+      undo();
+      break;
+
+    case 'r':
+      quoted_insert();
+      break;
+
+    case 'R':
+      if (!mark_set) {
+        set_mark_command();
+      }
+      fill_with_string();
+      set_mark_command();
+      break;
+
+    case CTRL('W'):
+      ch = getch();
+      switch (ch) {
+        case CTRL('W'):
+        case 'w':
+          toggle();
+          break;
+        default:
+          firstTimeHelp();
+      }
+      break;
+
+    case '/':
+      search_forward();
+      break;
+    case '?':
+      search_backward();
+      break;
+
+    case 'f':
+      goto_char();
+      break;
+
+    case 'z':
+      ch = getch();
+      switch (ch) {
+        case 'z':
+          recenter();
+          break;
+        default:
+          firstTimeHelp();
+      }
+      break;
+
+    case KEY_F(1):
+      help();
+      break;
+
+    case CTRL('L'):
+      redisplay();
+      break;
+
+    case 'x':
+      delete_char();
+      break;
+
+    case 'd':
+      ch = getch();
+      switch (ch) {
+        case 'w':
+          delete_chars();
+          break;
+        case 'G':
+          truncate_file();
+          break;
+        default:
+          firstTimeHelp();
+      }
+      break;
+
+    case 'v':
+      set_mark_command();
+      break;
+
+    case 'y':
+      copy_region();
+      break;
+
+    case 'p':
+      yank();
+      break;
+
+    case '\n':
+    case '\r':
+    case KEY_ENTER:
+      if (mode == bySector) goto_sector(); else goto_char();
+      break;
+
+    case ':':
+      command_mode();
+      break;
+
+    case 'c':
+      ch = getch();
+      switch (ch) {
+        case 'c':
+          fill_with_string();
+          break;
+        default:
+          firstTimeHelp();
+      }
+      break;
+    case 'C':
+      fill_with_string();
+      break;
+
+    default:
+  }
+}
+
+static void command_mode(void) {
+  int ch;
+  displayOneLineMessage("Command: ");
+  if (get_and_run_command() != 0) displayMessageAndWaitForKey("Invalid command!");
+}
+
+static int get_and_run_command(void) {
+  char tmp[BLOCK_SEARCH_SIZE];
+  echo();
+  getnstr(tmp, BLOCK_SEARCH_SIZE - 1);
+  noecho();
+
+  if (streq(tmp, "f") || streq(tmp, "find")) find_file();
+  else if (streq(tmp, "w") || streq(tmp, "write")) save_buffer();
+  else if (streq(tmp, "p") || streq(tmp, "paste")) yank_to_a_file();
+  else if (streq(tmp, "q") || streq(tmp, "quit")) ask_about_save_and_quit();
+  else if (streq(tmp, "q!") || streq(tmp, "quit!")) quit();
+  else if (streq(tmp, "wq")) {save_buffer(); quit();}
+  else return -1;
+
+  return 0;
+}
+
+int vi_key_to_function(int key) {
   oldcursor = cursor;
   oldcursorOffset = cursorOffset;
   oldbase = base;
-  /*printf("*******%d******\n", key);*/
 
-  switch (key)
-    {
+  switch (key) {
     case KEY_RESIZE:
       /*Close and refresh window to get new size*/
       endwin();
@@ -358,357 +602,32 @@ int key_to_function(int key)
     case ERR:
       break;
 
-    case KEY_RIGHT:
-    case CTRL('F'):
-      forward_char();
-      break;
-
-    case KEY_LEFT:
-    case CTRL('B'):
-      backward_char();
-      break;
-
-    case KEY_DOWN:
-    case CTRL('N'):
-      next_line();
-      break;
-
-    case KEY_UP:
-    case CTRL('P'):
-      previous_line();
-      break;
-
-    case ALT('F'):
-      forward_chars();
-      break;
-
-    case ALT('B'):
-      backward_chars();
-      break;
-
-    case ALT('N'):
-      next_lines();
-      break;
-
-    case ALT('P'):
-      previous_lines();
-      break;
-
-    case CTRL('A'):
-    case KEY_HOME:
-      beginning_of_line();
-      break;
-
-    case CTRL('E'):
-    case KEY_END:
-      end_of_line();
-      break;
-
-    case KEY_NPAGE:
-    case CTRL('V'):
-    case KEY_F(6):
-      scroll_up();
-      break;
-
-    case KEY_PPAGE:
-    case ALT('V'):
-    case KEY_F(5):
-      scroll_down();
-      break;
-
-    case '<':
-    case ALT('<'):
-      beginning_of_buffer();
-      break;
-
-    case '>':
-    case ALT('>'):
-      end_of_buffer();
-      break;
-
-    case KEY_SUSPEND:
-    case CTRL('Z'):
-      suspend();
-      break;
-
-    case CTRL('U'):
-    case CTRL('_'):
-      undo();
-      break;
-
-    case CTRL('Q'):
-      quoted_insert();
-      break;
-
-    case CTRL('T'):
-    case '\t':
-      toggle();
-      break;
-
-    case '/':
-    case CTRL('S'):
-      search_forward();
-      break;
-
-    case CTRL('R'):
-      search_backward();
-      break;
-
-    case CTRL('G'):
-    case KEY_F(4):
-      goto_char();
-      break;
-
-    case ALT('L'):
-      recenter();
-      break;
-
-    case '\n':
-    case '\r':
-    case KEY_ENTER:
-      if (mode == bySector) goto_sector(); else goto_char();
-      break;
-
-    case CTRL('W'):
-    case KEY_F(2):
-      save_buffer();
-      break;
-
-    case CTRL('['): /* escape */
-      escaped_command();
-      break;
-
-    case KEY_F(1):
-    case ALT('H'):
-      help();
-      break;
-
-    case KEY_F(3):
-    case CTRL('O'):
-      find_file();
-      break;
-
-    case CTRL('L'):
-      redisplay();
-      break;
-
-    case CTRL('H'):
-    case KEY_BACKSPACE:
-      delete_backward_char();
-      break;
-
-    case CTRL('H') | 0x80: /* CTRL-ALT-H */
-      delete_backward_chars();
-      break;
-
-    case CTRL(' '):
-    case KEY_F(9):
-      set_mark_command();
-      break;
-
-    case CTRL('D'):
-    case ALT('W'):
-    case KEY_DC:
-    case KEY_F(7):
-    case 0x7F: /* found on a sun */
-      copy_region();
-      break;
-
-    case CTRL('Y'):
-    case KEY_IC:
-    case KEY_F(8):
-      yank();
-      break;
-
-    case ALT('Y'):
-    case KEY_F(11):
-      yank_to_a_file();
-      break;
-
-    case KEY_F(12):
-    case ALT('I'):
-      fill_with_string();
-      break;
-
-    case CTRL('C'):
-      quit();
-      break;
-
-    case ALT('T'):
-      truncate_file();
-      break;
-
-    case KEY_F(0):
-    case KEY_F(10):
-    case CTRL('X'):
-      ask_about_save_and_quit();
-      break;
-
     default:
-      if ((key >= 256 || !setTo(key))) firstTimeHelp();
-    }
+      if (current_mode == 0) {
+        normal_mode(key);
+      } else if (current_mode == 1) {
+        insert_mode(key);
+      } else {
+        // NOTE: unreadchable
+        firstTimeHelp();
+      }
+  }
 
   return TRUE;
 }
 
-
-
-static void escaped_command(void) 
+static void delete_char(void)
 {
-  char tmp[BLOCK_SEARCH_SIZE];
-  int c, i;
+  removeFromEdited(base + cursor, 1);
+  readFile();
+  cursorOffset = 0;
+  if (!tryloc(base + cursor)) end_of_buffer();
+}
 
-  c = getch();
-  switch (c)
-  {
-  case KEY_RIGHT:
-  case 'f': 
-    forward_chars();
-    break;
-    
-  case KEY_LEFT:
-  case 'b':
-    backward_chars();
-    break;
-
-  case KEY_DOWN:
-  case 'n':
-    next_lines();
-    break;
-
-  case KEY_UP:
-  case 'p':
-    previous_lines();
-    break;
-
-  case 'v':
-    scroll_down();
-    break;
-
-  case KEY_HOME:
-  case '<':
-    beginning_of_buffer();
-    break;
-
-  case KEY_END:
-  case '>':
-    end_of_buffer();
-    break;
-
-  case 'l':
-    recenter();
-    break;
-
-  case 'h':
-    help();
-    break;
-
-  case CTRL('H'):
-    delete_backward_chars();
-    break;
-
-  case 'w':
-    copy_region();
-    break;
-
-  case 'y':
-    yank_to_a_file();
-    break;
-
-  case 'i':
-    fill_with_string();
-    break;
-
-  case 't':
-    truncate_file();
-    break;
-
-  case '':
-    c = getch();
-    if (c == 'O') {
-      switch (c = getch())
-      {
-      case 'C': 
-	forward_chars();
-	break;
-    
-      case 'D':
-	backward_chars();
-	break;
-
-      case 'B':
-	next_lines();
-	break;
-
-      case 'A':
-	previous_lines();
-	break;
-
-      case 'H':
-	beginning_of_buffer();
-	break;
-
-      case 'F':
-	end_of_buffer();
-	break;
-
-      case 'P': /* F1 on a xterm */
-	help();
-	break;
-
-      case 'Q': /* F2 on a xterm */
-	save_buffer();
-	break;
-
-      case 'R': /* F3 on a xterm */
-	find_file();
-	break;
-
-      case 'S': /* F4 on a xterm */
-	goto_char();
-	break;
-
-      default: 
-	firstTimeHelp();
-      }
-    } else firstTimeHelp();
-    break;
-
-  case '[': 
-    for (i = 0; i < BLOCK_SEARCH_SIZE - 1; i++) { tmp[i] = c = getch(); if (!isdigit(c)) break; }
-    tmp[i < BLOCK_SEARCH_SIZE - 1 ? i + 1 : i] = '\0';
-    
-    if (0);
-    else if (streq(tmp, "2~")) yank();
-    else if (streq(tmp, "5~")) scroll_down();
-    else if (streq(tmp, "6~")) scroll_up();
-    else if (streq(tmp, "7~")) beginning_of_buffer();
-    else if (streq(tmp, "8~")) end_of_buffer();
-    else if (streq(tmp, "010q" /* F10 on a sgi's winterm */)) ask_about_save_and_quit();
-    else if (streq(tmp, "193z")) fill_with_string();
-    else if (streq(tmp, "214z")) beginning_of_line();
-    else if (streq(tmp, "216z")) scroll_down();
-    else if (streq(tmp, "220z")) end_of_line();
-    else if (streq(tmp, "222z")) scroll_up();
-    else if (streq(tmp, "233z")) ask_about_save_and_quit();
-    else if (streq(tmp, "234z" /* F11 on a sun */)) yank_to_a_file();
-    else if (streq(tmp, "247z")) yank();
-    else if (streq(tmp, "11~" /* F1 on a rxvt */)) help();
-    else if (streq(tmp, "12~" /* F2 on a rxvt */)) save_buffer();
-    else if (streq(tmp, "13~" /* F3 on a rxvt */)) find_file();
-    else if (streq(tmp, "14~" /* F4 on a rxvt */)) goto_char();
-    else if (streq(tmp, "15~" /* F5 on a rxvt */)) scroll_down();
-    else if (streq(tmp, "17~" /* F6 on a rxvt */)) scroll_up();
-    else if (streq(tmp, "18~" /* F7 on a rxvt */)) copy_region();
-    else if (streq(tmp, "19~" /* F8 on a rxvt */)) yank();
-    else if (streq(tmp, "20~" /* F9 on a rxvt */)) set_mark_command();
-    else if (streq(tmp, "21~" /* F10 on a rxvt */)) ask_about_save_and_quit();
-    else if (streq(tmp, "23~" /* F11 on a rxvt */)) yank_to_a_file();
-    else if (streq(tmp, "24~" /* F12 on a rxvt */)) fill_with_string();
-    else firstTimeHelp();
-    break;
-
-  default:
-    firstTimeHelp();
-  }
+static void delete_chars(void)
+{
+  removeFromEdited(base + cursor, blocSize);
+  readFile();
+  cursorOffset = 0;
+  if (!tryloc(base + cursor)) end_of_buffer();
 }

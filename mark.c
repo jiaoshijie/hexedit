@@ -96,7 +96,7 @@ void fill_with_string(void)
   unsigned char *tmp1;
   int i, l1, l2;
 
-  if (!mark_set) return;
+  if (!mark_set) { displayMessageAndWaitForKey("You are not in visual mode"); return; }
   if (isReadOnly) { displayMessageAndWaitForKey("File is read-only!"); return; }
   if (sizeCopyBuffer > BIGGEST_COPYING) {
     displayTwoLineMessage("Hey, don't you think that's too big?!", "Really fill (Yes/No)");

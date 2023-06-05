@@ -30,6 +30,7 @@ int sizeCopyBuffer, *bufferAttr;
 char *progName, *fileName, *baseName;
 unsigned char *buffer, *copyBuffer;
 typePage *edited;
+int current_mode = 0;  // 0: normal_mode, 1: insert_mode
 
 char *lastFindFile = NULL, *lastYankToAFile = NULL, *lastAskHexString = NULL, *lastAskAsciiString = NULL, *lastFillWithStringHexa = NULL, *lastFillWithStringAscii = NULL;
 
@@ -105,7 +106,7 @@ int main(int argc, char **argv)
   }
   readFile();
   do display();
-  while (key_to_function(getch()));
+  while (vi_key_to_function(getch()));
   quit();
   return 0; /* for no warning */
 }

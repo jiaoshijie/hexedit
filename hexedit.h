@@ -101,6 +101,7 @@ extern int sizeCopyBuffer, *bufferAttr;
 extern char *progName, *fileName, *baseName;
 extern unsigned char *buffer, *copyBuffer;
 extern typePage *edited;
+extern int current_mode;
 
 extern char *lastFindFile, *lastYankToAFile, *lastAskHexString, *lastAskAsciiString, *lastFillWithStringHexa, *lastFillWithStringAscii;
 
@@ -109,7 +110,7 @@ extern char *lastFindFile, *lastYankToAFile, *lastAskHexString, *lastAskAsciiStr
 /* Miscellaneous functions declaration */
 /*******************************************************************************/
 INT getfilesize(void);
-int key_to_function(int key);
+int vi_key_to_function(int key);
 void init(void);
 void quit(void);
 int tryloc(INT loc);
